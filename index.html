@@ -131,7 +131,7 @@ const DOW = { '2026-11-27': '금', '2026-11-28': '토', '2026-11-29': '일' };
 const COL = { '콩미': 'k', '현경': 'h', '함께': 't' };
 const ICON = { start: '🚩', meet: '🤝', stay: '🏨', end: '👋', place: '📍', food: '🍽' };
 
-let items = [], settings = {}, plan = null, meet = null, meetSig = '', planErr = '', planning = false;
+let items = [], settings = {}, plan = null, meet = null, meetSig = '', planErr = '', planning = false, diagHtml = '', diagBusy = false;
 let me = '콩미', day = TRIP[1], tab = 'glance', formType = 'fixed', editingId = '';
 try { me = localStorage.getItem('me') || '콩미'; } catch (e) {}
 
@@ -367,10 +367,27 @@ async function makePlan() {
   planning = false;
   renderPlan();
 }
+async function runDiag() {
+  if (diagBusy) return;
+  diagBusy = true; diagHtml = '';
+  const steps = [['ping', '서버 연결·코드 버전', 30000], ['wait&sec=25', '25초 걸리는 요청도 받는지', 70000], ['kakao', '카카오 장소검색', 40000], ['navi', '카카오 길찾기', 40000], ['gemini', 'Gemini 호출', 130000]];
+  let lines = '';
+  for (const [s, name, to] of steps) {
+    diagHtml = `<div class="card">${lines}<div class="muted">⏳ ${esc(name)} 확인 중…</div></div>`; renderPlan();
+    let line;
+    try {
+      const r = await api('diag&step=' + s, null, to);
+      line = `${r.ok ? '✅' : '❌'} ${esc(name)} · ${r.ms == null ? '' : r.ms + 'ms'}${r.http ? ' · HTTP ' + r.http : ''}${r.version ? ' · 코드 ' + esc(r.version) : ''}${r.msg ? ' · ' + esc(r.msg) : ''}`;
+    } catch (e) { line = `❌ ${esc(name)} · ${esc(e.message)}`; }
+    lines += `<div class="row">${line}</div>`;
+  }
+  diagHtml = `<div class="card">${lines}</div>`; diagBusy = false; renderPlan();
+}
 function renderPlan() {
   const btn = `<button class="btn" id="plan-btn" onclick="makePlan()" ${planning ? 'disabled' : ''}>${planning ? '경로 계산 중… (30~60초)' : plan ? '🔄 코스 다시 만들기' : '✨ 최적 경로 만들기'}</button>`;
+  const diagBlock = `<button class="btn ghost" onclick="runDiag()" ${diagBusy ? 'disabled' : ''}>🔧 연결 진단 (원인 찾기)</button>${diagHtml}`;
   const errCard = planErr ? `<div class="card warn">⚠ 마지막 시도 실패: ${esc(planErr)}</div>` : '';
-  if (!plan) { $('plan').innerHTML = errCard + '<div class="card tip">먼저 <b>설정</b>(합류장소·숙소·헤어질 곳)과 <b>입력</b>(일정, 가고 싶은 곳, 먹고 싶은 음식)을 채운 뒤 버튼을 누르세요.</div>' + btn; return; }
+  if (!plan) { $('plan').innerHTML = errCard + '<div class="card tip">먼저 <b>설정</b>(합류장소·숙소·헤어질 곳)과 <b>입력</b>(일정, 가고 싶은 곳, 먹고 싶은 음식)을 채운 뒤 버튼을 누르세요.</div>' + btn + diagBlock; return; }
   let h = errCard + `<div class="card"><div class="muted">${esc(plan.made)} 생성 · 이동시간 ${plan.mode === 'transit' ? '자동차×1.5+10분 추정' : '자동차 기준'}</div>
     ${plan.summary ? `<div style="margin-top:6px">${esc(plan.summary)}</div>` : ''}</div>`;
   if (plan.warns && plan.warns.length) h += `<div class="card">${plan.warns.map(w => `<div class="warn">⚠ ${esc(w)}</div>`).join('')}</div>`;
@@ -387,7 +404,7 @@ function renderPlan() {
   });
   if (plan.dropped && plan.dropped.length) h += `<h3>못 넣은 항목</h3><div class="card">${plan.dropped.map(d => `<div class="row">· ${esc(d.title)} <span class="muted">${esc(d.reason)}</span></div>`).join('')}</div>`;
   if (plan.noGeo && plan.noGeo.length) h += `<div class="card warn">장소를 못 찾아 빠진 항목: ${plan.noGeo.map(esc).join(', ')} (입력 탭에서 검색어 수정)</div>`;
-  $('plan').innerHTML = h + btn;
+  $('plan').innerHTML = h + btn + diagBlock;
 }
 
 /* ---------- 설정 ---------- */
