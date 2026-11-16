@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>콩미 & 현경 여행 플래너</title>
 <style>
-:root{--bg:#faf3ea;--card:#fffaf4;--line:#ecdccb;--ink:#4a3b32;--sub:#8a776a;--sal:#e9967a;--sal2:#d97b5d;--k:#e07a5f;--h:#5f8fa8;--t:#b8863f}
+:root{--bg:#ffffff;--card:#f6f9fd;--line:#dbe5f1;--ink:#1f2d3d;--sub:#6b7a8c;--sal:#3a7bd5;--sal2:#2a5fb8;--k:#2d4f9e;--h:#2fa0c4;--t:#7a6fd0}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;font-size:15px;line-height:1.5}
 header{padding:16px 16px 8px;max-width:760px;margin:0 auto}
@@ -36,7 +36,7 @@ section{display:none}section.on{display:block}
 .blk{position:absolute;left:2px;right:2px;border-radius:8px;padding:3px 5px;font-size:11px;overflow:hidden;color:#fff;line-height:1.25}
 .blk span{opacity:.85}
 .blk.k{background:var(--k)}.blk.h{background:var(--h)}.blk.t{background:var(--t)}
-.blk.free{background:repeating-linear-gradient(45deg,#f3e3cf,#f3e3cf 6px,#faf0e2 6px,#faf0e2 12px);color:#8a6b3f;border:1px dashed #d9b98a}
+.blk.free{background:repeating-linear-gradient(45deg,#dfeafa,#dfeafa 6px,#f1f6fd 6px,#f1f6fd 12px);color:#3f5f8f;border:1px dashed #a9c1e6}
 .seg{display:flex;gap:6px;margin-bottom:10px}
 .seg button{flex:1;padding:9px 4px;border:1px solid var(--line);background:#fff;border-radius:12px;font-size:14px;color:var(--ink)}
 .seg button.on{background:var(--sal);border-color:var(--sal);color:#fff;font-weight:700}
@@ -55,9 +55,9 @@ h3{font-size:15px;margin:14px 0 6px}
 .stop{display:flex;gap:10px;padding:8px 0;border-top:1px solid var(--line)}
 .stop:first-child{border-top:0}
 .stop .tm{width:78px;flex:none;font-size:13px;color:var(--sal2);font-weight:700}
-.chip{display:inline-block;font-size:12px;color:var(--sub);background:#f3e7d8;border-radius:10px;padding:0 8px;margin-bottom:2px}
+.chip{display:inline-block;font-size:12px;color:var(--sub);background:#e8f0fb;border-radius:10px;padding:0 8px;margin-bottom:2px}
 a.map{font-size:12px;color:var(--h)}
-#toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#4a3b32;color:#fff;padding:10px 16px;border-radius:20px;font-size:14px;display:none;max-width:90%;z-index:20;text-align:center}
+#toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#1f2d3d;color:#fff;padding:10px 16px;border-radius:20px;font-size:14px;display:none;max-width:90%;z-index:20;text-align:center}
 .hide{display:none!important}
 </style>
 </head>
@@ -102,12 +102,12 @@ a.map{font-size:12px;color:var(--h)}
         <input id="f-region" list="regions" placeholder="예: 부산, 창원, 해운대">
         <datalist id="regions"><option value="부산"><option value="창원"><option value="해운대"><option value="광안리"><option value="서면"><option value="남포동"><option value="마산"><option value="진해"></datalist>
       </div>
-      <div class="two" id="f-time-wrap">
-        <div><label>시작</label><input id="f-start" type="time"></div>
-        <div><label>종료</label><input id="f-end" type="time"></div>
+      <div id="f-time-wrap">
+        <label>시각</label>
+        <input id="f-start" type="time">
       </div>
       <div id="f-stay-wrap">
-        <label>머무는 시간 (분)</label>
+        <label id="f-stay-l">머무는 시간 (분)</label>
         <input id="f-stay" type="number" min="20" max="300" step="10" value="60">
       </div>
       <label>메모 (선택)</label>
@@ -215,7 +215,7 @@ function meetCard() {
     if (!x) return;
     rows += x.free
       ? `<div class="row"><span class="who ${COL[p]}">${p}</span>28일 일정 없음 (언제든 가능)</div>`
-      : `<div class="row"><span class="who ${COL[p]}">${p}</span>${esc(x.title)} ${esc(x.end)} 종료 → 이동 ${x.travelMin}분${x.est ? '(추정)' : ''} + 여유 10분 = <b>${esc(x.arrive)}</b> 도착</div>`;
+      : `<div class="row"><span class="who ${COL[p]}">${p}</span>${esc(x.title)} ${esc(x.start)} 시작(약 ${x.dur}분, ${esc(x.end)} 종료 예상) → 이동 ${x.travelMin}분${x.est ? '(추정)' : ''} + 여유 10분 = <b>${esc(x.arrive)}</b> 도착</div>`;
   });
   const notes = (meet.notes || []).map(n => `<div class="muted">· ${esc(n)}</div>`).join('');
   return `<div class="card"><div class="big">🤝 합류 가능 ${esc(meet.meetAt || '-')}</div>
@@ -227,7 +227,7 @@ function timeline(date) {
   items.filter(i => i.type === 'fixed' && i.date === date).forEach(i => {
     const s = toMin(i.start), e = toMin(i.end);
     if (s == null) return;
-    blocks.push({ col: i.who, s, e: e == null || e <= s ? s + 60 : e, cls: 'f', title: i.title, sub: i.resolved ? i.resolved.split(' · ')[0] : i.place });
+    blocks.push({ col: i.who, s, e: e == null || e <= s ? s + 60 : e, cls: 'f', pt: true, title: i.title, sub: i.resolved ? i.resolved.split(' · ')[0] : i.place });
   });
   const pd = plan && plan.days && plan.days.find(d => d.date === date);
   if (pd && pd.stops.length) {
@@ -247,7 +247,7 @@ function timeline(date) {
   const cols = ['콩미', '함께', '현경'].map(c => {
     const bl = blocks.filter(b => b.col === c).map(b => {
       const cls = b.cls === 'free' ? 'free' : COL[c];
-      return `<div class="blk ${cls}" style="top:${(b.s - S) * px}px;height:${Math.max((b.e - b.s) * px, 26)}px"><b>${fmt(b.s)}–${fmt(b.e)}</b><br>${esc(b.title)}${b.sub ? `<br><span>${esc(b.sub)}</span>` : ''}</div>`;
+      return `<div class="blk ${cls}" style="top:${(b.s - S) * px}px;height:${Math.max((b.e - b.s) * px, 26)}px"><b>${b.pt ? fmt(b.s) : fmt(b.s) + '–' + fmt(b.e)}</b><br>${esc(b.title)}${b.sub ? `<br><span>${esc(b.sub)}</span>` : ''}</div>`;
     }).join('');
     return `<div class="col" style="height:${total}px;background-size:100% ${H}px">${bl}</div>`;
   });
@@ -268,7 +268,7 @@ function setType(t) {
   document.querySelectorAll('#seg button').forEach(b => b.classList.toggle('on', b.dataset.t === t));
   const fixed = t === 'fixed';
   $('f-time-wrap').classList.toggle('hide', !fixed);
-  $('f-stay-wrap').classList.toggle('hide', fixed);
+  $('f-stay-l').textContent = fixed ? '소요 시간 (분, 대략 · 합류 시각 계산에 써요)' : '머무는 시간 (분)';
   $('f-region-wrap').classList.toggle('hide', fixed);
   $('f-date').options[0].textContent = fixed ? '날짜 선택' : '상관없음';
   $('f-title-l').textContent = fixed ? '일정 이름 (예: 야구 직관, 결혼식)' : t === 'place' ? '가고 싶은 곳' : '먹고 싶은 음식 (예: 돼지국밥)';
@@ -285,13 +285,12 @@ async function submitItem(ev) {
   const it = {
     id: editingId, type: formType, who: $('f-who').value, date: $('f-date').value, title: $('f-title').value.trim(),
     place: $('f-place').value.trim(), region: formType === 'fixed' ? '' : $('f-region').value.trim(),
-    start: formType === 'fixed' ? $('f-start').value : '', end: formType === 'fixed' ? $('f-end').value : '',
-    stay: formType === 'fixed' ? '' : $('f-stay').value, memo: $('f-memo').value.trim()
+    start: formType === 'fixed' ? $('f-start').value : '', end: '',
+    stay: $('f-stay').value, memo: $('f-memo').value.trim()
   };
   if (formType === 'fixed') {
     if (!it.date) return toast('날짜를 선택하세요');
-    if (!it.start || !it.end) return toast('시작/종료 시간을 입력하세요');
-    if (toMin(it.end) <= toMin(it.start)) return toast('종료가 시작보다 늦어야 해요');
+    if (!it.start) return toast('시각을 입력하세요');
   }
   const btn = $('f-btn'); btn.disabled = true; btn.textContent = '저장 중…';
   try {
@@ -307,7 +306,7 @@ function editItem(id) {
   const i = items.find(x => x.id === id); if (!i) return;
   setType(i.type); editingId = id;
   $('f-who').value = i.who; $('f-date').value = i.date; $('f-title').value = i.title; $('f-place').value = i.place;
-  $('f-region').value = i.region; $('f-start').value = i.start; $('f-end').value = i.end; $('f-stay').value = i.stay || 60; $('f-memo').value = i.memo;
+  $('f-region').value = i.region; $('f-start').value = i.start; $('f-stay').value = i.stay || 60; $('f-memo').value = i.memo;
   $('f-btn').textContent = '수정 저장'; $('f-cancel').classList.remove('hide');
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
@@ -323,7 +322,7 @@ function renderList() {
     h += `<h3>${name} (${arr.length})</h3>`;
     if (!arr.length) h += '<div class="muted">아직 없어요</div>';
     arr.forEach(i => {
-      const when = (i.date ? label(i.date) : '날짜 상관없음') + (i.start ? ' ' + i.start + '–' + i.end : '');
+      const when = (i.date ? label(i.date) : '날짜 상관없음') + (i.start ? ' ' + i.start : '');
       const needPlace = t !== 'fixed' || i.place;
       const res = i.resolved ? `📌 ${esc(i.resolved)}` : (needPlace ? '<span class="warn">⚠ 카카오맵에서 못 찾았어요. 장소 검색어를 바꿔 수정해주세요</span>' : '');
       h += `<div class="card item"><span class="who ${COL[i.who]}">${esc(i.who)}</span><b>${esc(i.title)}</b>
