@@ -79,9 +79,9 @@ a.map{font-size:12px;color:var(--h)}
 
   <section id="input">
     <div class="seg" id="seg">
-      <button data-t="fixed" onclick="setType('fixed')">📅 일정</button>
-      <button data-t="place" onclick="setType('place')">📍 가고 싶은 곳</button>
-      <button data-t="food" onclick="setType('food')">🍽 먹고 싶은 음식</button>
+      <button data-t="fixed" onclick="switchType('fixed')">📅 일정</button>
+      <button data-t="place" onclick="switchType('place')">📍 가고 싶은 곳</button>
+      <button data-t="food" onclick="switchType('food')">🍽 먹고 싶은 음식</button>
     </div>
     <form class="card" id="form" onsubmit="submitItem(event)">
       <label>누구</label>
@@ -131,7 +131,7 @@ const DOW = { '2026-11-27': '금', '2026-11-28': '토', '2026-11-29': '일' };
 const COL = { '콩미': 'k', '현경': 'h', '함께': 't' };
 const ICON = { start: '🚩', meet: '🤝', stay: '🏨', end: '👋', place: '📍', food: '🍽' };
 
-let items = [], settings = {}, plan = null, meet = null, meetSig = '';
+let items = [], settings = {}, plan = null, meet = null, meetSig = '', planErr = '', planning = false;
 let me = '콩미', day = TRIP[1], tab = 'glance', formType = 'fixed', editingId = '';
 try { me = localStorage.getItem('me') || '콩미'; } catch (e) {}
 
@@ -276,6 +276,7 @@ function setType(t) {
   $('f-place').placeholder = fixed ? '예: 사직야구장' : t === 'food' ? '예: 초량밀면' : '예: 감천문화마을';
   $('f-date-note').textContent = fixed ? '(필수)' : '(선택)';
 }
+function switchType(t) { formType = t; resetForm(); } // 종류를 바꾸면 입력칸을 비워서 이전 값이 딸려가지 않게 함
 function resetForm() {
   editingId = ''; $('form').reset(); $('f-who').value = me; $('f-stay').value = 60;
   $('f-btn').textContent = '추가'; $('f-cancel').classList.add('hide'); setType(formType);
@@ -335,18 +336,21 @@ function renderList() {
 
 /* ---------- 코스 ---------- */
 async function makePlan() {
-  const b = $('plan-btn'); b.disabled = true; b.textContent = '경로 계산 중… (30~60초)';
+  if (planning) return;
+  planning = true; planErr = ''; renderPlan();
   try {
     const r = await api('plan', {});
     if (!r.ok) throw new Error(r.msg);
     plan = r.plan; toast('코스를 만들었어요');
-  } catch (e) { toast('실패: ' + e.message); }
+  } catch (e) { planErr = e.message; toast('실패: ' + e.message); }
+  planning = false;
   renderPlan();
 }
 function renderPlan() {
-  const btn = `<button class="btn" id="plan-btn" onclick="makePlan()">${plan ? '🔄 코스 다시 만들기' : '✨ 최적 경로 만들기'}</button>`;
-  if (!plan) { $('plan').innerHTML = '<div class="card tip">먼저 <b>설정</b>(합류장소·숙소·헤어질 곳)과 <b>입력</b>(일정, 가고 싶은 곳, 먹고 싶은 음식)을 채운 뒤 버튼을 누르세요.</div>' + btn; return; }
-  let h = `<div class="card"><div class="muted">${esc(plan.made)} 생성 · 이동시간 ${plan.mode === 'transit' ? '자동차×1.5+10분 추정' : '자동차 기준'}</div>
+  const btn = `<button class="btn" id="plan-btn" onclick="makePlan()" ${planning ? 'disabled' : ''}>${planning ? '경로 계산 중… (30~60초)' : plan ? '🔄 코스 다시 만들기' : '✨ 최적 경로 만들기'}</button>`;
+  const errCard = planErr ? `<div class="card warn">⚠ 마지막 시도 실패: ${esc(planErr)}</div>` : '';
+  if (!plan) { $('plan').innerHTML = errCard + '<div class="card tip">먼저 <b>설정</b>(합류장소·숙소·헤어질 곳)과 <b>입력</b>(일정, 가고 싶은 곳, 먹고 싶은 음식)을 채운 뒤 버튼을 누르세요.</div>' + btn; return; }
+  let h = errCard + `<div class="card"><div class="muted">${esc(plan.made)} 생성 · 이동시간 ${plan.mode === 'transit' ? '자동차×1.5+10분 추정' : '자동차 기준'}</div>
     ${plan.summary ? `<div style="margin-top:6px">${esc(plan.summary)}</div>` : ''}</div>`;
   if (plan.warns && plan.warns.length) h += `<div class="card">${plan.warns.map(w => `<div class="warn">⚠ ${esc(w)}</div>`).join('')}</div>`;
   plan.days.forEach(d => {
